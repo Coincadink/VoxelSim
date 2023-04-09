@@ -11,6 +11,3 @@ bin-int/
 
 # Exclude
 !vendor/bin
-
-# Imgui files
-*.ini
