@@ -42,8 +42,8 @@ public:
 
 	virtual void OnUpdate(float ts) override
 	{
-		if (m_Camera.OnUpdate(ts))
-			m_Renderer.ResetFrameIndex();
+		// if (m_Camera.OnUpdate(ts))
+			// m_Renderer.ResetFrameIndex();
 	}
 
 	virtual void OnUIRender() override

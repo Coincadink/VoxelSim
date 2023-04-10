@@ -23,7 +23,7 @@ public:
 
 private:
 	uint32_t Intersection(const struct ray* ray, const struct Cube* cube);
-	glm::vec4 PerPixel(glm::vec2 uv);
+	glm::vec4 PerPixel(glm::vec2 fragCoord);
 
 private:
 	std::shared_ptr<Walnut::Image> m_FinalImage;
