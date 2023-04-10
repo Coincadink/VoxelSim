@@ -48,12 +48,17 @@ public:
 
 	virtual void OnUIRender() override
 	{
+		auto image = m_Renderer.GetFinalImage();
+
 		ImGui::Begin("Settings");
 		ImGui::Text("Last render: %.3fms", m_LastRenderTime);
 		if (ImGui::Button("Render"))
 		{
 			Render();
 		}
+
+		if (image)
+			ImGui::Text("Resolution: %i, %i", image->GetWidth(), image->GetHeight());
 
 		ImGui::End();
 
@@ -63,14 +68,13 @@ public:
 		m_ViewportWidth = ImGui::GetContentRegionAvail().x;
 		m_ViewportHeight = ImGui::GetContentRegionAvail().y;
 
-		auto image = m_Renderer.GetFinalImage();
 		if (image)
 			ImGui::Image(image->GetDescriptorSet(), { (float)image->GetWidth(), (float)image->GetHeight() }, ImVec2(0, 1), ImVec2(1, 0));
 
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		Render();
+		// Render();
 	}
 
 	void Render()

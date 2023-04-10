@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include <execution>
+#include <algorithm>
 
 namespace Utils 
 {
@@ -62,7 +63,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 			std::for_each(std::execution::par, m_ImageHorizontalIter.begin(), m_ImageHorizontalIter.end(),
 			[this, y](uint32_t x)
 				{
-					uint32_t color = PerPixel(x, y);
+					uint32_t color = Utils::ConvertToRGBA(PerPixel(glm::vec2(x, y)));
 					m_ImageData[x + y * m_FinalImage->GetWidth()] = color;
 				});
 		});
@@ -71,6 +72,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 
 	m_FrameIndex = 1;
 }
+
 
 uint32_t Renderer::Intersection(const struct ray* ray, const struct Cube* cube)
 {
@@ -94,25 +96,77 @@ uint32_t Renderer::Intersection(const struct ray* ray, const struct Cube* cube)
 	return 0xff000000;
 }
 
-uint32_t Renderer::PerPixel(uint32_t x, uint32_t y)
+//------------------------------------------------------------------------------------
+
+#define pi acos(-1.0f)
+#define eps 1.0f / m_FinalImage->GetHeight()
+#define MAX_LEVEL 8.0f
+#define FAR 100.0f
+
+float fract(float x)
 {
-	uint32_t color = 0xff000000;
+	return x - floor(x);
+}
 
-	for (size_t i = 0; i < m_ActiveScene->Cubes.size(); i++)
-	{
-		const Cube& cube = m_ActiveScene->Cubes[i];
-
-		glm::vec3 origin = m_ActiveCamera->GetPosition() - cube.pos;
-		glm::vec3 dir = m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()];
-
-		ray _ray{
-			{origin.x, origin.y, origin.z},
-			{dir.x, dir.y, dir.z},
-			{1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z}
-		};
-		
-		color += Intersection(&_ray, &cube);
+float step(float edge, float x) 
+{
+	if (x < edge) {
+		return 0.0f;
 	}
-	
-	return color;
+	else {
+		return 1.0f;
+	}
+}
+
+float hash13(glm::vec3 p3)
+{
+	p3 = fract(p3 * 0.1031f);
+	p3 += dot(p3, glm::vec3(p3.z, p3.y, p3.x) + 31.32f);
+	return fract((p3.x + p3.y) * p3.z);
+}
+
+float mapQ(glm::vec3 p) 
+{
+	float s = 0.5f;
+	for (float i = 1.0f; i < MAX_LEVEL; i++) 
+	{
+		s *= 2.0f;
+		i += step(hash13(floor(p * s)), 0.5f) * MAX_LEVEL;
+	}
+	return s;
+}
+
+float calcT(glm::vec3 p, glm::vec3 rd, glm::vec3 delta) 
+{
+	float s = mapQ(p);
+	glm::vec3 t = glm::vec3(
+		rd.x < 0. ? ((p.x * s - floor(p.x * s)) / s) * delta.x : ((ceil(p.x * s) - p.x * s) / s) * delta.x,
+		rd.y < 0. ? ((p.y * s - floor(p.y * s)) / s) * delta.y : ((ceil(p.y * s) - p.y * s) / s) * delta.y,
+		rd.z < 0. ? ((p.z * s - floor(p.z * s)) / s) * delta.z : ((ceil(p.z * s) - p.z * s) / s) * delta.z
+	);
+	return Utils::min(t.x, Utils::min(t.y, t.z)) + 0.01;
+}
+
+glm::vec4 Renderer::PerPixel(glm::vec2 fragCoord)
+{
+	glm::vec2 uv = (fragCoord * 2.0f - glm::vec2((float) m_FinalImage->GetWidth(), (float) m_FinalImage->GetHeight())) / (float) m_FinalImage->GetHeight();
+	glm::vec3 fwd = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 right = normalize(cross(up, fwd));
+	up = cross(fwd, right);
+	glm::vec3 ro = glm::vec3(0.0f);
+	glm::vec3 rd = right * uv.x + up * uv.y + fwd;
+	rd = normalize(rd);
+	glm::vec3 delta = 1.0f / abs(rd);
+	float t = 0.0f;
+	for (float i = 0.; i < FAR; i++) 
+	{
+		glm::vec3 pos = ro + rd * t;
+		float ss = mapQ(pos);
+		glm::vec3 shi = abs(floor(pos - ro)) - 1.0f;
+		float hole = Utils::max(shi.x, shi.z);
+		if (hole > 0.001 && hash13(floor((pos)*ss)) > 0.4f) break;
+		t += calcT(pos, rd, delta);
+	}
+	return glm::vec4(pow(glm::vec3(std::clamp(1.0f - t / 7.0f, 0.0f, 1.0f)) * 1.3f, glm::vec3(4.0f)), 1.0f);
 }
