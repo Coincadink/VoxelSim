@@ -7,7 +7,6 @@
 #include "Renderer.h"
 #include "Camera.h"
 
-
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace Walnut;
@@ -16,17 +15,26 @@ class ExampleLayer : public Walnut::Layer
 {
 public:
 	ExampleLayer()
-		: m_Camera(45.0f, 0.1f, 100.0f)
+		: m_Camera(45.0f, 0.001f, 100.0f)
 	{
 		{
 			Cube cube{
-				{{-1.0f, -1.0f, 5.0f}, {1.0f, 1.0f, 7.0f}}
+				{0.0f, 0.0f, 0.0f},
+				{{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f}}
 			};
 			m_Scene.Cubes.push_back(cube);
 		}
 		{
 			Cube cube{
+				{10.5f, 10.5f, 10.5f},
 				{{10.0f, 10.0f, 10.0f}, {11.0f, 11.0f, 11.0f}}
+			};
+			m_Scene.Cubes.push_back(cube);
+		}
+		{
+			Cube cube{
+				{-10.0f, -10.0f, -10.0f},
+				{{-15.0f, -15.0f, -15.0f}, {-5.0f, -5.0f, -5.0f}}
 			};
 			m_Scene.Cubes.push_back(cube);
 		}
@@ -47,47 +55,7 @@ public:
 			Render();
 		}
 
-		/*
-		ImGui::Checkbox("Accumulate", &m_Renderer.GetSettings().Accumulate);
-
-		if (ImGui::Button("Reset"))
-			m_Renderer.ResetFrameIndex();
-		*/
-
 		ImGui::End();
-
-		/*
-		ImGui::Begin("Scene");
-		for (size_t i = 0; i < m_Scene.Spheres.size(); i++)
-		{
-			ImGui::PushID(i);
-
-			Sphere& sphere = m_Scene.Spheres[i];
-			ImGui::DragFloat3("Position", glm::value_ptr(sphere.Position), 0.1f);
-			ImGui::DragFloat("Radius", &sphere.Radius, 0.1f);
-			ImGui::DragInt("Material", &sphere.MaterialIndex, 1.0f, 0, (int)m_Scene.Materials.size() - 1);
-
-			ImGui::Separator();
-
-			ImGui::PopID();
-		}
-
-		for (size_t i = 0; i < m_Scene.Materials.size(); i++)
-		{
-			ImGui::PushID(i);
-
-			Material& material = m_Scene.Materials[i];
-			ImGui::ColorEdit3("Albedo", glm::value_ptr(material.Albedo));
-			ImGui::DragFloat("Roughness", &material.Roughness, 0.05f, 0.0f, 1.0f);
-			ImGui::DragFloat("Metallic", &material.Metallic, 0.05f, 0.0f, 1.0f);
-
-			ImGui::Separator();
-
-			ImGui::PopID();
-		}
-
-		ImGui::End();
-		*/
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::Begin("Viewport");
@@ -115,6 +83,7 @@ public:
 
 		m_LastRenderTime = timer.ElapsedMillis();
 	}
+
 private:
 	Renderer m_Renderer;
 	Camera m_Camera;

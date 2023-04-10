@@ -4,6 +4,7 @@
 
 struct Cube
 {
+	glm::vec3 pos;
 	float corners[2][3];
 };
 
