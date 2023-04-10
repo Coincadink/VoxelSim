@@ -63,7 +63,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 			std::for_each(std::execution::par, m_ImageHorizontalIter.begin(), m_ImageHorizontalIter.end(),
 			[this, y](uint32_t x)
 				{
-					uint32_t color = Utils::ConvertToRGBA(PerPixel(glm::vec2(x, y)));
+					glm::vec2 coord = glm::vec2((glm::vec2(x, y) * 2.0f - glm::vec2((float)m_FinalImage->GetWidth(), (float)m_FinalImage->GetHeight())) / (float)m_FinalImage->GetHeight());
+					uint32_t color = Utils::ConvertToRGBA(PerPixel(coord));
 					m_ImageData[x + y * m_FinalImage->GetWidth()] = color;
 				});
 		});
@@ -131,7 +132,9 @@ float mapQ(glm::vec3 p)
 	for (float i = 1.0f; i < MAX_LEVEL; i++) 
 	{
 		s *= 2.0f;
-		i += step(hash13(floor(p * s)), 0.5f) * MAX_LEVEL;
+		glm::vec3 floorbitch = floor(p * s);
+		float hashbrowns = hash13(floorbitch);
+		i += step(hashbrowns, 0.5f) * MAX_LEVEL;
 	}
 	return s;
 }
@@ -144,29 +147,28 @@ float calcT(glm::vec3 p, glm::vec3 rd, glm::vec3 delta)
 		rd.y < 0. ? ((p.y * s - floor(p.y * s)) / s) * delta.y : ((ceil(p.y * s) - p.y * s) / s) * delta.y,
 		rd.z < 0. ? ((p.z * s - floor(p.z * s)) / s) * delta.z : ((ceil(p.z * s) - p.z * s) / s) * delta.z
 	);
-	return Utils::min(t.x, Utils::min(t.y, t.z)) + 0.01;
+	return Utils::min(t.x, Utils::min(t.y, t.z)) + 0.01f;
 }
 
-glm::vec4 Renderer::PerPixel(glm::vec2 fragCoord)
+glm::vec4 Renderer::PerPixel(glm::vec2 uv)
 {
-	glm::vec2 uv = (fragCoord * 2.0f - glm::vec2((float) m_FinalImage->GetWidth(), (float) m_FinalImage->GetHeight())) / (float) m_FinalImage->GetHeight();
 	glm::vec3 fwd = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 	glm::vec3 right = normalize(cross(up, fwd));
-	up = cross(fwd, right);
-	glm::vec3 ro = glm::vec3(0.0f);
-	glm::vec3 rd = right * uv.x + up * uv.y + fwd;
-	rd = normalize(rd);
-	glm::vec3 delta = 1.0f / abs(rd);
+
+	glm::vec3 origin = glm::vec3(0.0f);
+	glm::vec3 dir = normalize(right * uv.x + up * uv.y + fwd);
+	glm::vec3 delta = 1.0f / abs(dir);
+
 	float t = 0.0f;
-	for (float i = 0.; i < FAR; i++) 
+	for (float i = 0.0f; i < FAR; i++) 
 	{
-		glm::vec3 pos = ro + rd * t;
+		glm::vec3 pos = origin + dir * t;
 		float ss = mapQ(pos);
-		glm::vec3 shi = abs(floor(pos - ro)) - 1.0f;
+		glm::vec3 shi = abs(floor(pos - origin)) - 1.0f;
 		float hole = Utils::max(shi.x, shi.z);
 		if (hole > 0.001 && hash13(floor((pos)*ss)) > 0.4f) break;
-		t += calcT(pos, rd, delta);
+		t += calcT(pos, dir, delta);
 	}
-	return glm::vec4(pow(glm::vec3(std::clamp(1.0f - t / 7.0f, 0.0f, 1.0f)) * 1.3f, glm::vec3(4.0f)), 1.0f);
+	return glm::vec4(pow(glm::vec3(std::clamp((1.0f - t / 7.0f) * 1.2f, 0.0f, 1.0f)), glm::vec3(4.0f)), 1.0f);
 }
